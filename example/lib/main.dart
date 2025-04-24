@@ -1,12 +1,15 @@
 import 'dart:convert';
+
 // import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_basic/flutter_bluetooth_basic.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,13 +17,13 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Bluetooth Scanner'),
+      home: const MyHomePage(title: 'Bluetooth Scanner'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
   final String title;
 
   @override
@@ -31,7 +34,7 @@ class _MyHomePageState extends State<MyHomePage> {
   BluetoothManager bluetoothManager = BluetoothManager.instance;
 
   bool _connected = false;
-  BluetoothDevice _device;
+  BluetoothDevice? _device;
   String tips = 'no device connect';
 
   @override
@@ -78,8 +81,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onConnect() async {
-    if (_device != null && _device.address != null) {
-      await bluetoothManager.connect(_device);
+    final device = _device;
+    if (device != null && (device.address?.isNotEmpty ?? false)) {
+      await bluetoothManager.connect(device);
     } else {
       setState(() {
         tips = 'please select device';
@@ -127,20 +131,20 @@ class _MyHomePageState extends State<MyHomePage> {
               Divider(),
               StreamBuilder<List<BluetoothDevice>>(
                 stream: bluetoothManager.scanResults,
-                initialData: [],
+                initialData: const [],
                 builder: (c, snapshot) => Column(
-                  children: snapshot.data
+                  children: (snapshot.data ?? [])
                       .map((d) => ListTile(
                             title: Text(d.name ?? ''),
-                            subtitle: Text(d.address),
+                            subtitle: Text(d.address ?? ''),
                             onTap: () async {
                               setState(() {
                                 _device = d;
                               });
                             },
                             trailing:
-                                _device != null && _device.address == d.address
-                                    ? Icon(
+                                _device != null && _device!.address == d.address
+                                    ? const Icon(
                                         Icons.check,
                                         color: Colors.green,
                                       )
@@ -157,20 +161,20 @@ class _MyHomePageState extends State<MyHomePage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
-                        OutlineButton(
-                          child: Text('connect'),
+                        OutlinedButton(
                           onPressed: _connected ? null : _onConnect,
+                          child: const Text('connect'),
                         ),
-                        SizedBox(width: 10.0),
-                        OutlineButton(
-                          child: Text('disconnect'),
+                        const SizedBox(width: 10.0),
+                        OutlinedButton(
                           onPressed: _connected ? _onDisconnect : null,
+                          child: const Text('disconnect'),
                         ),
                       ],
                     ),
-                    OutlineButton(
-                      child: Text('Send test data'),
+                    OutlinedButton(
                       onPressed: _connected ? _sendData : null,
+                      child: const Text('Send test data'),
                     ),
                   ],
                 ),
@@ -183,17 +187,17 @@ class _MyHomePageState extends State<MyHomePage> {
         stream: bluetoothManager.isScanning,
         initialData: false,
         builder: (c, snapshot) {
-          if (snapshot.data) {
+          if (snapshot.data == true) {
             return FloatingActionButton(
-              child: Icon(Icons.stop),
               onPressed: () => bluetoothManager.stopScan(),
               backgroundColor: Colors.red,
+              child: const Icon(Icons.stop),
             );
           } else {
             return FloatingActionButton(
-                child: Icon(Icons.search),
-                onPressed: () =>
-                    bluetoothManager.startScan(timeout: Duration(seconds: 4)));
+                onPressed: () => bluetoothManager.startScan(
+                    timeout: const Duration(seconds: 4)),
+                child: const Icon(Icons.search));
           }
         },
       ),

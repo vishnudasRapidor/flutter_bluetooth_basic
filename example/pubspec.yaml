@@ -1,15 +1,16 @@
 name: flutter_bluetooth_basic_example
 description: Demonstrates how to use the flutter_bluetooth_basic plugin.
-publish_to: 'none'
+publish_to: "none"
 
 environment:
-  sdk: ">=2.1.0 <3.0.0"
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.29.3"
 
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^0.1.2
-  path_provider: ^1.4.5
+  cupertino_icons: ^1.0.5
+  path_provider: ^2.1.1
 
 dev_dependencies:
   flutter_test:
