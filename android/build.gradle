@@ -9,17 +9,16 @@ buildscript {
 
     dependencies {
         classpath 'com.android.tools.build:gradle:7.3.0'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.7.10'
     }
 }
 
-rootProject.allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
 }
 
-apply plugin: 'com.android.library'
+// Repository declarations should be in settings.gradle
 
 android {
     namespace = "com.tablemi.flutter_bluetooth_basic"
@@ -37,4 +36,5 @@ android {
 
 dependencies {
     implementation files('libs/gprintersdkv2.jar')
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.7.10'
 }

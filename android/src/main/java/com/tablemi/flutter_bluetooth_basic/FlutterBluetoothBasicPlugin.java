@@ -15,8 +15,12 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.util.Log;
+import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.EventChannel.EventSink;
 import io.flutter.plugin.common.EventChannel.StreamHandler;
@@ -24,6 +28,7 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
+import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener;
 
@@ -34,36 +39,120 @@ import java.util.Map;
 import java.util.Vector;
 
 /** FlutterBluetoothBasicPlugin */
-public class FlutterBluetoothBasicPlugin implements MethodCallHandler, RequestPermissionsResultListener {
+public class FlutterBluetoothBasicPlugin implements FlutterPlugin, ActivityAware, MethodCallHandler, RequestPermissionsResultListener {
   private static final String TAG = "BluetoothBasicPlugin";
   private int id = 0;
   private ThreadPool threadPool;
   private static final int REQUEST_COARSE_LOCATION_PERMISSIONS = 1451;
   private static final String NAMESPACE = "flutter_bluetooth_basic";
-  private final Registrar registrar;
-  private final Activity activity;
-  private final MethodChannel channel;
-  private final EventChannel stateChannel;
-  private final BluetoothManager mBluetoothManager;
+  // v1 embedding objects
+  private Registrar registrar;
+  
+  // v2 embedding objects
+  private FlutterPluginBinding flutterPluginBinding;
+  private ActivityPluginBinding activityPluginBinding;
+  
+  // Common objects
+  private Activity activity;
+  private Context context;
+  private MethodChannel channel;
+  private EventChannel stateChannel;
+  private BluetoothManager mBluetoothManager;
   private BluetoothAdapter mBluetoothAdapter;
 
   private MethodCall pendingCall;
   private Result pendingResult;
 
+  // This static function is optional and equivalent to onAttachedToEngine.
+  // It supports the old pre-Flutter-1.12 Android projects.
   public static void registerWith(Registrar registrar) {
-    final FlutterBluetoothBasicPlugin instance = new FlutterBluetoothBasicPlugin(registrar);
-    registrar.addRequestPermissionsResultListener(instance);
+    final FlutterBluetoothBasicPlugin instance = new FlutterBluetoothBasicPlugin();
+    instance.setupWithRegistrar(registrar);
   }
-
-  FlutterBluetoothBasicPlugin(Registrar r){
+  
+  // Constructor for v2 embedding
+  public FlutterBluetoothBasicPlugin() {}
+  
+  // Setup for v1 embedding
+  private void setupWithRegistrar(Registrar r) {
     this.registrar = r;
     this.activity = r.activity();
-    this.channel = new MethodChannel(registrar.messenger(), NAMESPACE + "/methods");
-    this.stateChannel = new EventChannel(registrar.messenger(), NAMESPACE + "/state");
-    this.mBluetoothManager = (BluetoothManager) registrar.activity().getSystemService(Context.BLUETOOTH_SERVICE);
-    this.mBluetoothAdapter = mBluetoothManager.getAdapter();
+    this.context = activity.getApplicationContext();
+    setupChannels(r.messenger());
+    
+    if (activity != null) {
+      this.mBluetoothManager = (BluetoothManager) activity.getSystemService(Context.BLUETOOTH_SERVICE);
+      this.mBluetoothAdapter = mBluetoothManager != null ? mBluetoothManager.getAdapter() : null;
+    }
+    
+    r.addRequestPermissionsResultListener(this);
+  }
+  
+  // Setup channels shared between v1 and v2 embedding
+  private void setupChannels(BinaryMessenger messenger) {
+    channel = new MethodChannel(messenger, NAMESPACE + "/methods");
+    stateChannel = new EventChannel(messenger, NAMESPACE + "/state");
+    
     channel.setMethodCallHandler(this);
     stateChannel.setStreamHandler(stateStreamHandler);
+  }
+  
+  // V2 embedding methods
+  @Override
+  public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
+    this.flutterPluginBinding = binding;
+    this.context = binding.getApplicationContext();
+    setupChannels(binding.getBinaryMessenger());
+  }
+  
+  @Override
+  public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+    teardownChannels();
+  }
+  
+  @Override
+  public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
+    this.activityPluginBinding = binding;
+    this.activity = binding.getActivity();
+    binding.addRequestPermissionsResultListener(this);
+    
+    if (context != null) {
+      this.mBluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+      this.mBluetoothAdapter = mBluetoothManager != null ? mBluetoothManager.getAdapter() : null;
+    }
+  }
+  
+  @Override
+  public void onDetachedFromActivityForConfigChanges() {
+    this.activity = null;
+    if (activityPluginBinding != null) {
+      activityPluginBinding.removeRequestPermissionsResultListener(this);
+    }
+  }
+  
+  @Override
+  public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
+    this.activityPluginBinding = binding;
+    this.activity = binding.getActivity();
+    binding.addRequestPermissionsResultListener(this);
+  }
+  
+  @Override
+  public void onDetachedFromActivity() {
+    onDetachedFromActivityForConfigChanges();
+    activityPluginBinding = null;
+  }
+  
+  private void teardownChannels() {
+    if (channel != null) {
+      channel.setMethodCallHandler(null);
+      channel = null;
+    }
+    
+    if (stateChannel != null) {
+      stateChannel.setStreamHandler(null);
+      stateChannel = null;
+    }
   }
 
   @Override

@@ -1,15 +1,40 @@
+// Flutter settings file for version 3.27.1+
+
+// Get the Flutter SDK path from local.properties
+def flutterProjectRoot = rootProject.projectDir.parentFile.parentFile
+def localProperties = new Properties()
+def propertiesFile = new File(rootProject.projectDir, "local.properties")
+if (propertiesFile.exists()) {
+    propertiesFile.withReader("UTF-8") { reader -> localProperties.load(reader) }
+}
+
+def flutterSdkPath = localProperties.getProperty("flutter.sdk")
+if (flutterSdkPath == null) {
+    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
+}
+
+// Include Flutter Gradle Plugin as a repository source
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+// Use Flutter dependencies
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
 include ':app'
 
-def flutterProjectRoot = rootProject.projectDir.parentFile.toPath()
+// Set default project directory for :flutter module
+setting "io.flutter.embedding.android.FlutterEmbeddingVersion", "2"
 
-def plugins = new Properties()
-def pluginsFile = new File(flutterProjectRoot.toFile(), '.flutter-plugins')
-if (pluginsFile.exists()) {
-    pluginsFile.withReader('UTF-8') { reader -> plugins.load(reader) }
-}
-
-plugins.each { name, path ->
-    def pluginDirectory = flutterProjectRoot.resolve(path).resolve('android').toFile()
-    include ":$name"
-    project(":$name").projectDir = pluginDirectory
-}
+// Include Flutter module
+apply from: "${flutterSdkPath}/packages/flutter_tools/gradle/app_plugin_loader.gradle"
